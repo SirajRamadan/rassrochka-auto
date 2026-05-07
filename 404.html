@@ -1,0 +1,13 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script>
+  // Redirect SPA routes via sessionStorage trick
+  var seg = window.location.pathname.replace('/rassrochka-auto','') || '/';
+  sessionStorage.setItem('spa_redirect', seg + window.location.search);
+  window.location.href = '/rassrochka-auto/';
+</script>
+</head>
+<body></body>
+</html>
