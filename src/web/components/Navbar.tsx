@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X, Phone } from "lucide-react";
+import { isTelegram, tgUser, tgBackButton, tgHaptic } from "../telegram";
 
 const navLinks = [
   { label: "Главная", href: "/" },
@@ -15,7 +16,7 @@ const navLinks = [
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -23,7 +24,22 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  useEffect(() => setMenuOpen(false), [location]);
+  // Telegram back button — show on any non-home page
+  useEffect(() => {
+    if (!isTelegram) return;
+    if (location !== "/") {
+      tgBackButton(true, () => {
+        navigate("/");
+        tgHaptic("light");
+      });
+    } else {
+      tgBackButton(false);
+    }
+  }, [location]);
+
+  useEffect(() => { setMenuOpen(false); }, [location]);
+
+  const handleNavClick = () => tgHaptic("light");
 
   return (
     <>
@@ -35,21 +51,26 @@ export default function Navbar() {
           right: 0,
           zIndex: 1000,
           transition: "all 0.4s cubic-bezier(0.16,1,0.3,1)",
-          background: scrolled
-            ? "rgba(10,10,15,0.92)"
-            : "transparent",
+          background: scrolled ? "rgba(10,10,15,0.92)" : "transparent",
           backdropFilter: scrolled ? "blur(24px)" : "none",
           borderBottom: scrolled ? "1px solid rgba(255,255,255,0.06)" : "none",
         }}
       >
         <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", height: 72 }}>
           {/* Logo */}
-          <Link href="/" style={{ textDecoration: "none", flexShrink: 0 }}>
+          <Link href="/" onClick={handleNavClick} style={{ textDecoration: "none", flexShrink: 0 }}>
             <span style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 900, fontSize: 18, letterSpacing: "-0.02em" }}>
               <span style={{ background: "linear-gradient(135deg,#FFD700,#FFA500)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>РАССРОЧКА</span>
               <span style={{ color: "#fff", marginLeft: 8 }}>АВТО</span>
             </span>
           </Link>
+
+          {/* Telegram user greeting */}
+          {isTelegram && tgUser && (
+            <div style={{ marginLeft: 16, background: "rgba(255,215,0,0.08)", border: "1px solid rgba(255,215,0,0.2)", borderRadius: 50, padding: "4px 14px", fontSize: 12, color: "#FFD700", fontFamily: "'Manrope', sans-serif", fontWeight: 600 }} className="hide-mobile">
+              👋 {tgUser.first_name}
+            </div>
+          )}
 
           {/* Desktop links */}
           <div style={{ flex: 1, display: "flex", justifyContent: "center", gap: 4, alignItems: "center" }} className="hide-mobile">
@@ -57,6 +78,7 @@ export default function Navbar() {
               <Link
                 key={l.href}
                 href={l.href}
+                onClick={handleNavClick}
                 style={{
                   textDecoration: "none",
                   fontFamily: "'Manrope', sans-serif",
@@ -79,11 +101,13 @@ export default function Navbar() {
 
           {/* CTA + Phone */}
           <div style={{ display: "flex", alignItems: "center", gap: 12 }} className="hide-mobile">
-            <a href="tel:+78126027322" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,0.8)", fontFamily: "'Manrope', sans-serif", fontSize: 14, fontWeight: 600 }}>
-              <Phone size={14} />
-              +7 (812) 602-73-22
-            </a>
-            <Link href="/zayavka">
+            {!isTelegram && (
+              <a href="tel:+78126027322" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,0.8)", fontFamily: "'Manrope', sans-serif", fontSize: 14, fontWeight: 600 }}>
+                <Phone size={14} />
+                +7 (812) 602-73-22
+              </a>
+            )}
+            <Link href="/zayavka" onClick={handleNavClick}>
               <button className="btn-gold" style={{ padding: "10px 22px", borderRadius: 50, fontSize: 12 }}>
                 ЗАЯВКА
               </button>
@@ -93,7 +117,7 @@ export default function Navbar() {
           {/* Mobile burger */}
           <button
             className="hide-desktop"
-            onClick={() => setMenuOpen(v => !v)}
+            onClick={() => { setMenuOpen(v => !v); tgHaptic("light"); }}
             style={{ marginLeft: "auto", background: "none", border: "none", color: "#fff", cursor: "pointer", padding: 8 }}
           >
             {menuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -105,10 +129,7 @@ export default function Navbar() {
       <div
         style={{
           position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
+          top: 0, left: 0, right: 0, bottom: 0,
           zIndex: 999,
           background: "rgba(10,10,15,0.98)",
           backdropFilter: "blur(24px)",
@@ -123,10 +144,16 @@ export default function Navbar() {
           transform: menuOpen ? "translateY(0)" : "translateY(-8px)",
         }}
       >
+        {isTelegram && tgUser && (
+          <div style={{ marginBottom: 16, color: "#FFD700", fontFamily: "'Manrope', sans-serif", fontSize: 16, fontWeight: 600 }}>
+            👋 Привет, {tgUser.first_name}!
+          </div>
+        )}
         {navLinks.map((l, i) => (
           <Link
             key={l.href}
             href={l.href}
+            onClick={handleNavClick}
             style={{
               textDecoration: "none",
               fontFamily: "'Unbounded', sans-serif",
@@ -142,10 +169,12 @@ export default function Navbar() {
           </Link>
         ))}
         <div style={{ marginTop: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-          <a href="tel:+78126027322" style={{ color: "#FFD700", fontFamily: "'Manrope', sans-serif", fontSize: 20, fontWeight: 700, textDecoration: "none" }}>
-            +7 (812) 602-73-22
-          </a>
-          <Link href="/zayavka">
+          {!isTelegram && (
+            <a href="tel:+78126027322" style={{ color: "#FFD700", fontFamily: "'Manrope', sans-serif", fontSize: 20, fontWeight: 700, textDecoration: "none" }}>
+              +7 (812) 602-73-22
+            </a>
+          )}
+          <Link href="/zayavka" onClick={handleNavClick}>
             <button className="btn-gold" style={{ padding: "16px 40px", borderRadius: 50, fontSize: 14 }}>
               ОНЛАЙН ЗАЯВКА
             </button>

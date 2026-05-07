@@ -1,22 +1,42 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { CheckCircle, ArrowRight, Send } from "lucide-react";
 import TiltCard from "../components/TiltCard";
 import { useReveal } from "../hooks/useReveal";
+import { tgUser, tgMainButton, tgHideMainButton, tgHaptic, isTelegram } from "../telegram";
 
 export default function ZayavkaPage() {
   const ref = useReveal();
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({
-    name: "", phone: "", city: "", downPayment: "", carWish: "", monthlyBudget: "", comment: "",
+    name: tgUser ? `${tgUser.first_name}${tgUser.last_name ? " " + tgUser.last_name : ""}` : "",
+    phone: "",
+    city: "",
+    downPayment: "",
+    carWish: "",
+    monthlyBudget: "",
+    comment: "",
   });
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm(v => ({ ...v, [k]: e.target.value }));
 
+  const doSubmit = () => {
+    tgHaptic("medium");
+    setSubmitted(true);
+    tgHideMainButton();
+  };
+
+  // Telegram MainButton
+  useEffect(() => {
+    if (!isTelegram || submitted) return;
+    tgMainButton("ОТПРАВИТЬ ЗАЯВКУ", doSubmit);
+    return () => tgHideMainButton();
+  }, [submitted]);
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    doSubmit();
   };
 
   return (
@@ -32,7 +52,7 @@ export default function ZayavkaPage() {
             Онлайн <span className="text-gold-gradient">заявка</span>
           </h1>
           <p className="reveal" style={{ color: "rgba(255,255,255,0.55)", fontSize: 17, maxWidth: 520, lineHeight: 1.7 }}>
-            Заполните форму — менеджер свяжется в течение 30 минут и подберёт оптимальные условия.
+            Заполните форму — менеджер свяжется в течение 30 минут.
           </p>
         </div>
       </section>
@@ -42,6 +62,15 @@ export default function ZayavkaPage() {
           {/* Form */}
           {!submitted ? (
             <TiltCard className="reveal glass-card" style={{ borderRadius: 28, padding: "48px 40px" }}>
+              {isTelegram && tgUser?.photo_url && (
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28, padding: "12px 16px", background: "rgba(255,215,0,0.06)", border: "1px solid rgba(255,215,0,0.15)", borderRadius: 12 }}>
+                  <img src={tgUser.photo_url} alt="" style={{ width: 36, height: 36, borderRadius: "50%" }} />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#FFD700" }}>{tgUser.first_name} {tgUser.last_name ?? ""}</div>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>@{tgUser.username ?? "telegram"}</div>
+                  </div>
+                </div>
+              )}
               <form onSubmit={submit}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
                   <div>
@@ -63,7 +92,7 @@ export default function ZayavkaPage() {
                     <input className="float-input" placeholder="Сумма в рублях" value={form.downPayment} onChange={set("downPayment")} />
                   </div>
                   <div>
-                    <label style={{ display: "block", color: "rgba(255,255,255,0.45)", fontSize: 12, fontFamily: "'Unbounded', sans-serif", letterSpacing: "0.05em", marginBottom: 8 }}>ЕЖЕМЕСЯЧНЫЙ БЮДЖЕТ</label>
+                    <label style={{ display: "block", color: "rgba(255,255,255,0.45)", fontSize: 12, fontFamily: "'Unbounded', sans-serif", letterSpacing: "0.05em", marginBottom: 8 }}>БЮДЖЕТ В МЕС.</label>
                     <input className="float-input" placeholder="₽/мес." value={form.monthlyBudget} onChange={set("monthlyBudget")} />
                   </div>
                 </div>
@@ -75,10 +104,18 @@ export default function ZayavkaPage() {
                   <label style={{ display: "block", color: "rgba(255,255,255,0.45)", fontSize: 12, fontFamily: "'Unbounded', sans-serif", letterSpacing: "0.05em", marginBottom: 8 }}>ДОПОЛНИТЕЛЬНО</label>
                   <textarea className="float-input" placeholder="Любая важная информация..." value={form.comment} onChange={set("comment") as any} rows={3} style={{ resize: "vertical" }} />
                 </div>
-                <button type="submit" className="btn-gold" style={{ width: "100%", padding: "18px", borderRadius: 50, fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-                  ОТПРАВИТЬ ЗАЯВКУ <ArrowRight size={18} />
-                </button>
-                <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, textAlign: "center", marginTop: 16 }}>
+                {/* Only show button if NOT in Telegram (Telegram uses MainButton) */}
+                {!isTelegram && (
+                  <button type="submit" className="btn-gold" style={{ width: "100%", padding: "18px", borderRadius: 50, fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                    ОТПРАВИТЬ ЗАЯВКУ <ArrowRight size={18} />
+                  </button>
+                )}
+                {isTelegram && (
+                  <p style={{ color: "rgba(255,215,0,0.6)", fontSize: 13, textAlign: "center", fontFamily: "'Manrope', sans-serif" }}>
+                    Нажмите кнопку внизу экрана для отправки
+                  </p>
+                )}
+                <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 12, textAlign: "center", marginTop: 12 }}>
                   Нажимая кнопку, вы соглашаетесь на обработку персональных данных
                 </p>
               </form>
@@ -92,7 +129,7 @@ export default function ZayavkaPage() {
                 Заявка отправлена!
               </h2>
               <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 16, lineHeight: 1.7, maxWidth: 400, margin: "0 auto 32px" }}>
-                Наш менеджер свяжется с вами в течение 30 минут. Также можно написать напрямую в Telegram.
+                Наш менеджер свяжется с вами в течение 30 минут.
               </p>
               <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
                 <a href="https://t.me/rassrochka_auto" target="_blank" rel="noreferrer">
@@ -101,7 +138,7 @@ export default function ZayavkaPage() {
                   </button>
                 </a>
                 <Link href="/auto">
-                  <button className="btn-gold" style={{ padding: "14px 32px", borderRadius: 50, fontSize: 13 }}>
+                  <button className="btn-gold" style={{ padding: "14px 32px", borderRadius: 50, fontSize: 13 }} onClick={() => tgHaptic("light")}>
                     Смотреть авто
                   </button>
                 </Link>
@@ -127,22 +164,19 @@ export default function ZayavkaPage() {
                 ))}
               </div>
             </TiltCard>
-
             <TiltCard className="reveal reveal-delay-2 glass-card" style={{ borderRadius: 20, padding: 28 }}>
               <div style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16, color: "#FFD700" }}>Нужные документы</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {["Паспорт", "Водительское удостоверение", "Первоначальный взнос"].map((d, i) => (
                   <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", color: "rgba(255,255,255,0.7)", fontSize: 14 }}>
-                    <CheckCircle size={14} color="#FFD700" />
-                    {d}
+                    <CheckCircle size={14} color="#FFD700" />{d}
                   </div>
                 ))}
               </div>
               <div style={{ marginTop: 16, padding: 14, background: "rgba(255,215,0,0.06)", borderRadius: 12, color: "rgba(255,255,255,0.6)", fontSize: 13, lineHeight: 1.6 }}>
-                Никаких справок о доходах или НДФЛ не требуется!
+                Никаких справок о доходах не требуется!
               </div>
             </TiltCard>
-
             <TiltCard className="reveal reveal-delay-3" style={{ background: "linear-gradient(135deg,#FFD700,#FFA500)", borderRadius: 20, padding: 28 }}>
               <div style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 8, color: "#0a0a0f" }}>Звоните 24/7</div>
               <a href="tel:+78126027322" style={{ fontFamily: "'Unbounded', sans-serif", fontWeight: 900, fontSize: 20, color: "#0a0a0f", textDecoration: "none", display: "block" }}>
